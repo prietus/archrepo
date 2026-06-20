@@ -163,6 +163,13 @@ exclude_regex = ".*april-fools.*"
 source = "manual"
 manual = "r183.cf94e7f"
 
+# Own package: a bash script (lsimg). VCS, rebuild on any new commit. pkgver() prefers a
+# git tag if present, else r<count>.<hash>.
+[lsimg-git]
+source = "git"
+git = "https://github.com/prietus/lsimg.git"
+use_commit = true
+
 # python-dlib LAST on purpose: it's the heaviest build (boost/cmake/pybind11) and has
 # OOM'd before. Building it last means an OOM-kill of the pod can't block the lighter
 # packages above — they're already built and published incrementally by then.
