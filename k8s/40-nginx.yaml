@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: archrepo-nginx
+  namespace: archrepo
+data:
+  default.conf: |
+    server {
+      listen 80 default_server;
+      server_name _;
+      root /srv/repo;
+
+      # Pacman fetches the .db and .pkg.tar.zst files; directory listing helps debugging.
+      location / {
+        autoindex on;
+        autoindex_exact_size off;
+        autoindex_localtime on;
+      }
+      # The .db/.files are regenerated each build — never let clients cache them.
+      location ~ \.(db|files)(\.tar\.\w+)?$ {
+        add_header Cache-Control "no-cache";
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: archrepo-nginx
+  namespace: archrepo
+spec:
+  replicas: 1                 # RWO PVC -> single reader. Raise only with an RWX PVC.
+  selector:
+    matchLabels:
+      app: archrepo-nginx
+  template:
+    metadata:
+      labels:
+        app: archrepo-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /srv/repo
+              readOnly: true
+            - name: conf
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: archrepo-data
+        - name: conf
+          configMap:
+            name: archrepo-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: archrepo
+  namespace: archrepo
+spec:
+  selector:
+    app: archrepo-nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

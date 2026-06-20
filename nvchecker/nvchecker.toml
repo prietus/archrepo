@@ -1,0 +1,174 @@
+# nvchecker version-watch config.
+# Docs: https://nvchecker.readthedocs.io/en/latest/usage.html#configuration-files
+#
+# State files MUST live on the PVC ($REPO_ROOT/state) so version history survives
+# pod restarts. Keep these paths in sync with REPO_ROOT in the CronJob.
+[__config__]
+oldver = "/srv/repo/state/old_ver.json"
+newver = "/srv/repo/state/new_ver.json"
+
+# Section name MUST match the directory under pkgbuilds/ that holds the PKGBUILD.
+# exclude_regex drops prereleases (rc/beta/...) so we only build stable tags.
+
+[howdy-next]
+source = "gitea"
+host = "codeberg.org"
+gitea = "nathawat/howdy-next"
+use_max_tag = true
+prefix = "v"
+
+[aur-guard-bin]
+source = "github"
+github = "prietus/aur-guard"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[ipeek-bin]
+source = "github"
+github = "prietus/peek"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[jlfine-bin]
+source = "github"
+github = "prietus/jlfine"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[livefetch-bin]
+source = "github"
+github = "prietus/livefetch"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[mopytui-bin]
+source = "github"
+github = "prietus/mopytui"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[murmur-bin]
+source = "github"
+github = "prietus/murmur"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+# --- compiled-from-source packages ---
+[anyrun]
+source = "github"
+github = "anyrun-org/anyrun"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[swaylock-effects]
+source = "github"
+github = "jirutka/swaylock-effects"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[yay]
+source = "github"
+github = "Jguer/yay"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+# --- VCS packages: track the latest commit, not a tag. The PKGBUILD's pkgver()
+# computes the real version at build time; the build pipeline detects pkgver() and
+# skips the pkgver/updpkgsums rewrite. use_commit=true => rebuild on any new commit.
+
+[syshud]
+source = "git"
+git = "https://github.com/System64fumo/syshud.git"
+use_commit = true
+
+# Trimmed downstream to the single dark-planet theme, but version-tracks the whole
+# upstream collection repo (any commit there can touch the theme).
+[plymouth-theme-dark-planet-git]
+source = "git"
+git = "https://github.com/adi1090x/plymouth-themes.git"
+use_commit = true
+
+# --- caelestia stack + deps. Order matters: leaf deps first so the build pipeline
+# builds them before the packages that depend on them (caelestia-cli needs app2unit +
+# python-materialyoucolor; caelestia-shell needs caelestia-cli, quickshell-git, libcava,
+# app2unit, ttf-rubik-vf). makepkg --syncdeps resolves siblings from the local [myrepo].
+
+[app2unit]
+source = "github"
+github = "Vladimir-csp/app2unit"
+use_max_tag = true
+prefix = "v"
+
+[python-materialyoucolor]
+source = "github"
+github = "T-Dynamos/materialyoucolor-python"
+use_max_tag = true
+prefix = "v"
+
+[libcava]
+source = "github"
+github = "LukashonakV/cava"
+use_max_tag = true
+exclude_regex = ".*(beta|rc|alpha).*"
+
+# No upstream tags; source is pinned to a commit. Pin the version manually so it
+# builds once and doesn't churn. Bump this together with _commit/pkgver in the PKGBUILD.
+[ttf-rubik-vf]
+source = "manual"
+manual = "2.3.0"
+
+# VCS, hosted on Forgejo (not GitHub). pkgver() computes the real version at build.
+[quickshell-git]
+source = "git"
+git = "https://git.outfoxxed.me/quickshell/quickshell.git"
+use_commit = true
+
+[qtengine]
+source = "github"
+github = "kossLAN/qtengine"
+use_max_tag = true
+
+[zsh-abbr]
+source = "github"
+github = "olets/zsh-abbr"
+use_max_tag = true
+prefix = "v"
+
+[caelestia-cli]
+source = "github"
+github = "caelestia-dots/cli"
+use_max_tag = true
+prefix = "v"
+
+[caelestia-shell]
+source = "github"
+github = "caelestia-dots/shell"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*april-fools.*"
+
+# Pure metapackage (no source/build) from the caelestia dotfiles repo. Its version is
+# bumped by hand upstream (r<count>.<hash>), so pin it manually — bump when you want to
+# pick up dependency changes. Build always succeeds; deps resolve at install time.
+[caelestia-meta]
+source = "manual"
+manual = "r183.cf94e7f"
+
+# python-dlib LAST on purpose: it's the heaviest build (boost/cmake/pybind11) and has
+# OOM'd before. Building it last means an OOM-kill of the pod can't block the lighter
+# packages above — they're already built and published incrementally by then.
+[python-dlib]
+source = "github"
+github = "davisking/dlib"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"

@@ -1,0 +1,24 @@
+# Adjust host, ingressClassName and TLS to match your cluster's ingress controller.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: archrepo
+  namespace: archrepo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod   # auto-issues a Let's Encrypt cert
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: archrepo.priet.us        # <-- set to your real DNS name
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: archrepo
+                port:
+                  number: 80
+  tls:
+    - hosts: [archrepo.priet.us]     # <-- same host as above
+      secretName: archrepo-tls          # cert-manager creates/fills this Secret

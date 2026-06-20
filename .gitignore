@@ -1,0 +1,18 @@
+# Never commit signing material
+*.asc
+*.gpg
+archrepo-signing-key.pub
+secring.*
+
+# Build artifacts
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+src/
+pkg/
+
+# Local tooling / editor state
+.claude/settings.local.json
+
+# Stray debug artifacts pulled into the repo root (not package sources)
+/myrepo.db
+/*.tar.gz

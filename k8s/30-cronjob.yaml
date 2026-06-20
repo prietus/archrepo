@@ -1,0 +1,75 @@
+# Periodically checks upstream versions and rebuilds changed packages.
+#
+# Fully in-cluster: runs the stock official archlinux:base-devel image. The build
+# logic and PKGBUILDs are injected as ConfigMaps (archrepo-build-script, archrepo-src),
+# created/updated by `make sync`. No custom image and no registry are involved.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: archrepo-builder
+  namespace: archrepo
+spec:
+  schedule: "0 * * * *"          # hourly; adjust as needed
+  concurrencyPolicy: Forbid      # never run two builds at once (they share the PVC)
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200    # room to build the whole set (dlib/rust/go) in one run
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            fsGroup: 1000          # PVC group-writable by the builder user (uid 1000)
+          containers:
+            - name: builder
+              image: archlinux:base-devel
+              # Starts as root to install tooling + create the builder user, then the
+              # script re-execs itself unprivileged. Do NOT set runAsUser here.
+              command: ["bash", "/scripts/build-repo.sh"]
+              env:
+                - name: REPO_NAME
+                  value: myrepo
+                - name: REPO_ROOT
+                  value: /srv/repo
+                - name: ARCH
+                  value: x86_64
+                # Cap cmake/ninja build parallelism: dlib's pybind11 link OOM-killed the
+                # pod at 8Gi when compiling ~7 TUs at once. Fewer parallel jobs = lower peak.
+                - name: CMAKE_BUILD_PARALLEL_LEVEL
+                  value: "4"
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 4Gi
+                limits:
+                  cpu: "4"
+                  memory: 16Gi   # python-dlib (boost/cmake/pybind11) is memory-hungry to link
+              volumeMounts:
+                - name: data
+                  mountPath: /srv/repo
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: gpg
+                  mountPath: /secrets
+                  readOnly: true
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: archrepo-data
+            - name: script
+              configMap:
+                name: archrepo-build-script
+            - name: src
+              configMap:
+                name: archrepo-src
+            - name: gpg
+              secret:
+                secretName: archrepo-gpg
+                defaultMode: 0400

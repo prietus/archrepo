@@ -1,0 +1,20 @@
+# Shared storage for built packages, the pacman .db, and nvchecker state.
+#
+# The builder CronJob WRITES this volume and nginx READS it at the same time.
+#   - ReadWriteOnce works only if BOTH pods land on the SAME node. The nginx
+#     Deployment and the CronJob both set the same nodeAffinity/topology, OR
+#   - use a ReadWriteMany-capable StorageClass (NFS, Longhorn, CephFS, ...).
+# If your cluster supports RWX, switch accessModes to ReadWriteMany and drop the
+# node-pinning in 40-nginx.yaml / 30-cronjob.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: archrepo-data
+  namespace: archrepo
+spec:
+  accessModes:
+    - ReadWriteMany       # builder + nginx share this volume across nodes
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: nfs   # cluster default RWX provisioner (nfs-subdir)
