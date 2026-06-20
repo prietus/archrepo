@@ -10,6 +10,48 @@ shipped into the cluster as ConfigMaps. Everything is `kubectl apply`. The only 
 pulled from outside are public base images (`archlinux`, `nginx`) — unavoidable for any
 cluster.
 
+## The live repo
+
+This instance is running and serving packages right now:
+
+| | |
+|---|---|
+| **Repo name** | `myrepo` |
+| **URL** | <https://archrepo.priet.us/$arch> (i.e. `…/x86_64`) |
+| **Arch** | `x86_64` |
+| **Signing key** | `A55728913D61E6A349664C9F6BAB541F79DF2E87` — *Carlos Arch Repo \<cprieto.ortiz@gmail.com\>* |
+| **Public key** | <https://archrepo.priet.us/archrepo-signing-key.pub> |
+
+The packages it builds and signs are exactly the directories under `pkgbuilds/`
+(murmur-bin, the caelestia stack, quickshell-git, syshud, the plymouth theme, etc.).
+
+### Enable it on an Arch client
+
+```bash
+# 1. Trust the repo's signing key (one-time)
+curl -fsSL -o /tmp/archrepo.pub https://archrepo.priet.us/archrepo-signing-key.pub
+sudo pacman-key --add /tmp/archrepo.pub
+sudo pacman-key --lsign-key A55728913D61E6A349664C9F6BAB541F79DF2E87
+```
+> Use the **full fingerprint** above for `--lsign-key`; a truncated key ID fails with
+> *"No se ha podido firmar … localmente"*.
+
+```ini
+# 2. Append to /etc/pacman.conf  (put it below the official repos)
+[myrepo]
+SigLevel = Required
+Server = https://archrepo.priet.us/$arch
+```
+
+```bash
+# 3. Refresh and install
+sudo pacman -Sy
+sudo pacman -S caelestia-meta        # or any package listed under pkgbuilds/
+```
+
+Updates are automatic: the in-cluster CronJob re-checks upstream versions hourly, so a new
+release lands in `myrepo` within ~1 h and reaches you on the next `pacman -Syu`.
+
 ## How it works
 
 ```
@@ -105,19 +147,10 @@ upstream version at build time.
 
 ## Use the repo from a client
 
-```bash
-sudo pacman-key --add archrepo-signing-key.pub        # one-time trust
-sudo pacman-key --lsign-key <KEYID>                   # KEYID from create-gpg-secret.sh
-```
-Add to `/etc/pacman.conf`:
-```ini
-[myrepo]
-SigLevel = Required
-Server = https://archrepo.example.com/$arch
-```
-```bash
-sudo pacman -Sy myrepo/hello
-```
+For the **live instance**, see [The live repo](#the-live-repo) above. Generically: trust
+the signing key (`pacman-key --add` + `--lsign-key <fingerprint>`), then add a `[myrepo]`
+section to `/etc/pacman.conf` with `SigLevel = Required` and `Server = https://<host>/$arch`.
+
 > `Server` ends in `$arch`, resolving to `/srv/repo/x86_64`. The database is `myrepo.db`,
 > matching `REPO_NAME=myrepo`.
 
