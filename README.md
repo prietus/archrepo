@@ -44,10 +44,13 @@ Server = https://archrepo.priet.us/$arch
 ```
 
 ```bash
-# 3. Refresh and install
-sudo pacman -Sy
+# 3. Refresh all DBs + full upgrade, then install
+sudo pacman -Syu
 sudo pacman -S caelestia-meta        # or any package listed under pkgbuilds/
 ```
+> Use `-Syu`, **not** `-Sy`. A bare `pacman -Sy pkg` refreshes the DBs without upgrading the
+> system — a *partial upgrade*, which Arch explicitly discourages (a package may be linked
+> against newer libs than the ones you have installed). Always sync and upgrade together.
 
 Updates are automatic: the in-cluster CronJob re-checks upstream versions hourly, so a new
 release lands in `myrepo` within ~1 h and reaches you on the next `pacman -Syu`.
