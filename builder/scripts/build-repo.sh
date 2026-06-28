@@ -248,6 +248,16 @@ for entry in "${pending[@]}"; do
   err "Build FAILED for ${entry%%$'\t'*} — dependency not available, will retry next run"
 done
 
+# --- prune old versions ---------------------------------------------------
+# repo-add only re-points the .db at the new version; the superseded .pkg.tar.zst(.sig)
+# files linger on the PVC forever and keep being served by nginx. Keep the 2 most recent
+# versions of each package and delete older ones so the volume doesn't grow unbounded.
+# (paccache removes the matching .sig alongside each package; it ignores the .db/.files.)
+if [[ ${#built[@]} -gt 0 ]]; then
+  log "Pruning old package versions (keeping 2 newest of each)"
+  paccache --remove --keep 2 --verbose --cachedir "$PKGDIR" || true
+fi
+
 # --- summary --------------------------------------------------------------
 # Packages are added to the DB incrementally as they build (see loop above), so the
 # repo stays consistent and self-referential even if a later package fails.

@@ -170,6 +170,33 @@ source = "git"
 git = "https://github.com/prietus/lsimg.git"
 use_commit = true
 
+# Own package: prebuilt -bin from GitHub release assets (URLs derive from $pkgver, so a new
+# tag auto-bumps + re-checksums). Tracked by tags like murmur-bin.
+[irkt-bin]
+source = "github"
+github = "prietus/irkt"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+# Own package: prebuilt -bin (GTK4 frontend). Release binary + GitHub archive tarball for
+# the .desktop/icons; all URLs derive from $pkgver. Tracked by tags like murmur-bin.
+[iperfgtk-bin]
+source = "github"
+github = "prietus/iperfgtk"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+# Own package: prebuilt -bin (GTK4 nmap frontend). Release binary + GitHub archive tarball
+# for the .desktop/icons; all URLs derive from $pkgver. Tracked by tags like murmur-bin.
+[nmapgtk-bin]
+source = "github"
+github = "prietus/nmapgtk"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
 # python-dlib LAST on purpose: it's the heaviest build (boost/cmake/pybind11) and has
 # OOM'd before. Building it last means an OOM-kill of the pod can't block the lighter
 # packages above — they're already built and published incrementally by then.
