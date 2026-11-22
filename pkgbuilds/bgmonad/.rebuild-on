@@ -1,0 +1,3 @@
+# Haskell libraries this package links against: rebuild (and pin) when Arch updates them.
+ghc-libs
+haskell-network

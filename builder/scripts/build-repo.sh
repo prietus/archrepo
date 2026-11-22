@@ -132,6 +132,47 @@ nvchecker -c "$NVCHECKER_TOML" "${KEY_ARGS[@]}"
 # nvcmp prints one line per changed entry: "<name> <oldver> <newver>".
 mapfile -t CHANGED < <(nvcmp -c "$NVCHECKER_TOML" | awk 'NF>=2 && $1 !~ /^#/ {print $1"\t"$NF}')
 
+# --- rebuilds when a library they link against changes ----------------------
+# nvchecker only sees new upstream versions. Packages linked against libraries that
+# Arch rebuilds with a new ABI (Haskell programs and ghc-libs, most of all) list those
+# packages in pkgbuilds/<name>/.rebuild-on, one per line. When the version of any of
+# them in the official repos changes, the package is rebuilt at the same pkgver with
+# the next pkgrel. The versions it was last built against are kept on the PVC.
+REBUILD_STATE="$STATE_DIR/rebuild-on.json"
+[[ -f "$REBUILD_STATE" ]] || echo '{}' > "$REBUILD_STATE"
+
+# The versions of the packages a .rebuild-on lists, as "name=ver,name=ver".
+rebuild_signature() {
+  local f="$1" d v out=()
+  while read -r d; do
+    [[ -z "$d" || "$d" == \#* ]] && continue
+    v="$(pacman -Si "$d" 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')"
+    out+=("$d=${v:-?}")
+  done < "$f"
+  (IFS=,; printf '%s' "${out[*]}")
+}
+
+for f in "$PKGBUILD_DIR"/*/.rebuild-on; do
+  [[ -f "$f" ]] || continue
+  pkg="$(basename "$(dirname "$f")")"
+  sig="$(rebuild_signature "$f")"
+  old="$(jq -r --arg p "$pkg" '.[$p] // empty' "$REBUILD_STATE")"
+  # Never built against anything recorded yet: the next normal build records it.
+  [[ -z "$old" || "$old" == "$sig" ]] && continue
+  printf '%s\n' "${CHANGED[@]}" | cut -f1 | grep -qx "$pkg" && continue   # rebuilt anyway
+  ver="$(jq -r --arg p "$pkg" '.data[$p].version // .[$p].version // .[$p] // empty' \
+         "$STATE_DIR/old_ver.json" 2>/dev/null)"
+  cur="$(pacman -Sl "$REPO_NAME" 2>/dev/null | awk -v n="$pkg" '$2==n {print $3; exit}')"
+  if [[ -z "$ver" || -z "$cur" ]]; then
+    err "$pkg: $old -> $sig, but its current version is unknown — not rebuilding"
+    continue
+  fi
+  rel=1
+  [[ "${cur%-*}" == "$ver" ]] && rel=$(( ${cur##*-} + 1 ))
+  log "$pkg: built against $old, now $sig — rebuilding $ver-$rel"
+  CHANGED+=("$pkg"$'\t'"$ver"$'\t'"$rel")
+done
+
 if [[ ${#CHANGED[@]} -eq 0 ]]; then
   log "No version changes — nothing to build."
   exit 0
@@ -150,9 +191,10 @@ built=()
 # Build one "pkg<TAB>newver" entry in the current shell (mutates $built).
 # Returns: 0 = built OK, 2 = failed on unmet deps (retry later), 3 = permanent failure.
 build_one() {
-  local entry="$1" pkg newver src work mklog f
-  pkg="${entry%%$'\t'*}"
-  newver="${entry##*$'\t'}"
+  local entry="$1" pkg newver rel src work mklog f d v
+  # "pkg<TAB>ver", or "pkg<TAB>ver<TAB>pkgrel" for a rebuild (see .rebuild-on)
+  IFS=$'\t' read -r pkg newver rel <<< "$entry"
+  rel="${rel:-1}"
   src="$PKGBUILD_DIR/$pkg"
 
   if [[ ! -f "$src/PKGBUILD" ]]; then
@@ -173,7 +215,7 @@ build_one() {
     sed -i -E "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
   else
     sed -i -E "s/^pkgver=.*/pkgver=${newver}/" PKGBUILD
-    sed -i -E "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+    sed -i -E "s/^pkgrel=.*/pkgrel=${rel}/" PKGBUILD
     # Metapackages have no source=() array — updpkgsums errors with nothing to checksum.
     if grep -qE '^[[:space:]]*source(_[a-z0-9_]+)?=' PKGBUILD; then
       if ! updpkgsums; then
@@ -183,6 +225,18 @@ build_one() {
     else
       log "  $pkg has no source array — skipping updpkgsums"
     fi
+  fi
+
+  # Pin what a .rebuild-on lists to the exact version built against (as Arch does with
+  # its own Haskell packages), so pacman upgrades them and this package together: a
+  # user never gets the new library while the package is still linked to the old one.
+  # (Global depends only: a split package with its own depends=() is not pinned.)
+  if [[ -f .rebuild-on ]]; then
+    while read -r d; do
+      [[ -z "$d" || "$d" == \#* ]] && continue
+      v="$(pacman -Si "$d" 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')"
+      [[ -n "$v" ]] && printf "\ndepends+=('%s=%s')\n" "$d" "$v" >> PKGBUILD
+    done < .rebuild-on
   fi
 
   # Metapackages (no source array, nothing to compile) must NOT resolve/install their
@@ -213,6 +267,10 @@ build_one() {
       sudo cp -fL "$DB" "/var/lib/pacman/sync/${REPO_NAME}.db" 2>/dev/null || true
     fi
     nvtake -c "$NVCHECKER_TOML" "$pkg"   # record version only after a successful build
+    if [[ -f "$src/.rebuild-on" ]]; then   # and what it was built against
+      jq --arg p "$pkg" --arg s "$(rebuild_signature "$src/.rebuild-on")" '.[$p] = $s' \
+        "$REBUILD_STATE" > "$REBUILD_STATE.tmp" && mv "$REBUILD_STATE.tmp" "$REBUILD_STATE"
+    fi
     log "OK: $pkg $newver"
     popd >/dev/null; rm -rf "$work"; return 0
   fi

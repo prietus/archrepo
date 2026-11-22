@@ -135,9 +135,11 @@ make logs        # watch it build the example `hello` package
 ## Add a package
 
 1. Create `pkgbuilds/<name>/PKGBUILD`.
-2. Add a `[<name>]` section to `nvchecker/nvchecker.toml` pointing at its upstream
+2. If it links against libraries Arch rebuilds with new ABIs (Haskell, say), list them
+   in `pkgbuilds/<name>/.rebuild-on` (see [Notes & limits](#notes--limits)).
+3. Add a `[<name>]` section to `nvchecker/nvchecker.toml` pointing at its upstream
    ([source list](https://nvchecker.readthedocs.io/en/latest/usage.html)).
-3. Push the change into the cluster and build:
+4. Push the change into the cluster and build:
    ```bash
    make sync && make trigger
    ```
@@ -172,8 +174,13 @@ section to `/etc/pacman.conf` with `SigLevel = Required` and `Server = https://<
   function and skips the `pkgver=` rewrite + `updpkgsums`, letting makepkg compute the
   version from the cloned source. Track these with a `git` source + `use_commit` in
   `nvchecker.toml` so a new upstream commit triggers a rebuild.
-- **pkgrel-only rebuilds** (soname bumps from dependency updates) aren't auto-triggered —
-  this reacts to *upstream version* changes only.
+- **pkgrel-only rebuilds** (soname bumps from dependency updates): list the libraries a
+  package links against in `pkgbuilds/<name>/.rebuild-on`, one per line. When their
+  version in the official repos changes, the package is rebuilt at the same `pkgver`
+  with the next `pkgrel`, and its `depends` are pinned to the exact versions it was
+  built against, so `pacman -Syu` upgrades both together. rivermonad, waymobar and
+  bgmonad use it for `ghc-libs` and `haskell-network` (Haskell links against exact
+  library hashes). Packages without the file react to upstream versions only.
 - **GitHub rate limits**: add a token via the optional `nvchecker-keyfile` Secret entry.
 - **Concurrency**: `concurrencyPolicy: Forbid` + a single nginx replica keep PVC writers
   serialized. Don't scale nginx past 1 on a ReadWriteOnce PVC.

@@ -206,3 +206,49 @@ github = "davisking/dlib"
 use_max_tag = true
 prefix = "v"
 exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+# --- the rivermonad desktop (https://rivermonad.priet.us) -------------------
+# rivermonad, waymobar and bgmonad link against Arch's Haskell libraries: their
+# .rebuild-on files rebuild them when ghc-libs or haskell-network change.
+
+[rivermonad]
+source = "github"
+github = "prietus/rivermonad"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[waymobar]
+source = "github"
+github = "prietus/waymobar"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[bgmonad]
+source = "github"
+github = "prietus/bgmonad"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[hasklets]
+source = "github"
+github = "prietus/hasklets"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[shotlet]
+source = "github"
+github = "prietus/shotlet"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[locklet]
+source = "github"
+github = "prietus/locklet"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
