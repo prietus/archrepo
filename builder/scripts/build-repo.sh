@@ -34,7 +34,11 @@ if [[ "$(id -u)" -eq 0 ]]; then
   # Persist pacman's package cache on the PVC so hourly runs don't re-download.
   PAC_CACHE="${REPO_ROOT}/.cache/pacman-pkg"
   mkdir -p "$PAC_CACHE"
-  pacman -Sy --noconfirm --needed --cachedir "$PAC_CACHE" \
+  # -Syu, not -Sy: the stock image lags behind the repos, and packages installed later
+  # as build deps (ghc-libs, Qt...) are linked against the current glibc and openssl.
+  # A partial upgrade leaves the old ones in place ("GLIBC_2.44 not found",
+  # "libcrypto.so.4: cannot open shared object file").
+  pacman -Syu --noconfirm --needed --cachedir "$PAC_CACHE" \
       nvchecker pacman-contrib jq git
 
   # Register our own repo so makepkg --syncdeps can resolve inter-package deps against
