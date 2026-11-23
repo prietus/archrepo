@@ -252,3 +252,10 @@ github = "prietus/locklet"
 use_max_tag = true
 prefix = "v"
 exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[spacelet]
+source = "github"
+github = "prietus/spacelet"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
