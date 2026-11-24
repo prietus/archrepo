@@ -1,10 +1,7 @@
 # Maintainer: Carlos Prieto Ortiz <prietus@live.com>
 
 pkgname=luna
-# No release tag yet: a snapshot of main (version.rCOUNT.gHASH, like a -git
-# package's pkgver()). Switch to $url/archive/v$pkgver.tar.gz once tagged.
-_commit=3518ca132e6add7bebb3e39e3845e4bc140f0b83
-pkgver=0.1.0.r4.g3518ca1
+pkgver=0.1.0
 pkgrel=1
 pkgdesc='GTK4 client for Borg backup repositories, with tray icon, systemd schedules, BorgBase and BorgBox panels'
 url='https://github.com/prietus/luna'
@@ -17,30 +14,30 @@ optdepends=('libnotify: notifications when a scheduled backup ends'
             'openssh: SSH, BorgBase and BorgBox repositories'
             'python-pyfuse3: mounting archives'
             'gnome-keyring: a Secret Service keyring for the passphrases (or KeePassXC, KWallet...)')
-source=("$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz")
-sha256sums=('e4cbff3b23bf7d894d689589ac2ff8510bba92fb75f45b0c0e1f189f4692ee67')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('b88521fb05cf5f41b095163763c5d49f89700e51bd764fa434847ed80c5b86f3')
 
 prepare() {
-  cd $pkgname-$_commit
+  cd $pkgname-$pkgver
   export RUSTUP_TOOLCHAIN=stable
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  cd $pkgname-$_commit
+  cd $pkgname-$pkgver
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
   cargo build --frozen --release
 }
 
 check() {
-  cd $pkgname-$_commit
+  cd $pkgname-$pkgver
   export RUSTUP_TOOLCHAIN=stable
   cargo test --frozen --release
 }
 
 package() {
-  cd $pkgname-$_commit
+  cd $pkgname-$pkgver
   # binary, desktop entry, icons and LICENSE
   make DESTDIR="$pkgdir" PREFIX=/usr install
   install -Dm644 README.md -t "$pkgdir/usr/share/doc/$pkgname"
