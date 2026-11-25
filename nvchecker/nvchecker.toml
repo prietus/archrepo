@@ -266,3 +266,10 @@ github = "prietus/luna"
 use_max_tag = true
 prefix = "v"
 exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
+
+[river-fx]
+source = "github"
+github = "prietus/river-fx"
+use_max_tag = true
+prefix = "v"
+exclude_regex = ".*-(rc|beta|alpha|dev|pre|nightly).*"
