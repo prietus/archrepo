@@ -10,6 +10,10 @@ license=('MIT')
 depends=('gtk4' 'libadwaita' 'gtk4-layer-shell' 'glib2' 'cairo' 'pango' 'gdk-pixbuf2'
          'borg' 'libsecret' 'hicolor-icon-theme')
 makedepends=('cargo')
+# ring (the TLS of ureq) builds C and assembly with the CFLAGS of makepkg;
+# with -flto they are GCC bytecode that rust's link (lld) cannot read, and
+# the link fails with undefined ring_core_* symbols
+options=('!lto')
 optdepends=('libnotify: notifications when a scheduled backup ends'
             'openssh: SSH, BorgBase and BorgBox repositories'
             'python-pyfuse3: mounting archives'
